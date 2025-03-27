@@ -6,9 +6,11 @@ pool:
 
 steps:
 - task: UseDotNet@2
-  displayName: 'Install .NET Core SDK'
+  displayName: 'Use manually installed .NET Core SDK'
   inputs:
-    version: '8.x'  # Target .NET 8 framework
+    version: '8.x'
+    installationPath: 'C:\dotnet-sdk'
+
 
 - task: DotNetCoreCLI@2
   displayName: 'Restore dependencies'
