@@ -9,7 +9,8 @@ steps:
   displayName: 'Use manually installed .NET Core SDK'
   inputs:
     version: '8.x'
-    installationPath: 'C:\dotnet-sdk'
+    installationPath: 'C:\sdk'
+
 
 
 # Optional: Verify if .NET SDK is correctly installed
