@@ -2,16 +2,14 @@ trigger:
 - master
 
 pool:
-  name: 'Default'  # Use the self-hosted agent as required in your assignment
+  name: 'Default'  # Points to the self-hosted agent pool
 
 steps:
 - task: UseDotNet@2
-  displayName: 'Use manually installed .NET Core SDK'
+  displayName: 'Install .NET Core SDK'
   inputs:
-    version: '8.x'
+    version: '8.x'  # Ensures .NET 8 is targeted
     installationPath: 'C:\sdk'
-
-
 
 # Optional: Verify if .NET SDK is correctly installed
 - script: |
