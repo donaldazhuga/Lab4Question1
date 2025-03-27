@@ -20,7 +20,7 @@ class Program
         } while (true);
         return;
 
-        // Declare a ResetConsole local method
+        // Declare a ResetConsole local method-test
         void ResetConsole()
         {
             if (row > 0)
