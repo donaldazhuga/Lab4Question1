@@ -1,28 +1,35 @@
 trigger:
-- master  
+- master
 
 pool:
-  name: 'Azure Pipelines' # Ensure you have a self-hosted agent set up
+  name: 'Default'  # Use the self-hosted agent as required in your assignment
 
 steps:
 - task: UseDotNet@2
+  displayName: 'Install .NET Core SDK'
   inputs:
-    packageType: 'sdk'
-    version: '8.x'
-    installationPath: $(Agent.ToolsDirectory)/dotnet
+    version: '8.x'  # Target .NET 8 framework
 
-- script: dotnet restore
-  displayName: 'Restore Dependencies'
+- task: DotNetCoreCLI@2
+  displayName: 'Restore dependencies'
+  inputs:
+    command: 'restore'
+    projects: '**/*.csproj'
 
-- script: dotnet build --configuration Release
-  displayName: 'Build Project'
+- task: DotNetCoreCLI@2
+  displayName: 'Build project'
+  inputs:
+    command: 'build'
+    projects: '**/*.csproj'
 
-- script: dotnet pack --configuration Release -o $(Build.ArtifactStagingDirectory)
-  displayName: 'Pack NuGet Package'
+- task: DotNetCoreCLI@2
+  displayName: 'Pack NuGet package'
+  inputs:
+    command: 'pack'
+    arguments: '--output $(Build.ArtifactStagingDirectory)'
 
-- task: NuGetCommand@2
+- task: DotNetCoreCLI@2
+  displayName: 'Push NuGet package to Azure Artifacts Feed'
   inputs:
     command: 'push'
-    packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
-    nuGetFeedType: 'internal'
-    publishVstsFeed: 'dzhuga/newfeed'  # Replace with actual feed ID
+    arguments: '--source https://pkgs.dev.azure.com/dzhuga/newfeed/_packaging/newfeed/nuget/v3/index.json --api-key $(System.AccessToken)'
