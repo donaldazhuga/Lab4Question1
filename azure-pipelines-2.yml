@@ -13,6 +13,7 @@ steps:
 
 # Optional: Verify if .NET SDK is correctly installed
 - script: |
+    echo "Verifying .NET SDK version..."
     dotnet --version
   displayName: 'Verify .NET SDK Installation'
 
@@ -38,4 +39,16 @@ steps:
   displayName: 'Push NuGet package to Azure Artifacts Feed'
   inputs:
     command: 'push'
-    arguments: '--source https://pkgs.dev.azure.com/dzhuga/newfeed/_packaging/newfeed/nuget/v3/index.json --api-key $(System.AccessToken)'
+    arguments: '--source https://pkgs.dev.azure.com/dzhuga/_packaging/newfeed/nuget/v3/index.json --api-key $(System.AccessToken)'
+
+# Ensure NuGet.Config is properly configured with the feed
+- script: |
+    echo "Adding NuGet feed configuration..."
+    dotnet nuget add source https://pkgs.dev.azure.com/dzhuga/_packaging/newfeed/nuget/v3/index.json --name "newfeed" --username "AzureDevOps" --password "$(System.AccessToken)" --store-password-in-clear-text
+  displayName: 'Configure NuGet Feed'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Push NuGet package to Azure Artifacts Feed'
+  inputs:
+    command: 'push'
+    arguments: '--source newfeed --api-key $(System.AccessToken)'
