@@ -2,14 +2,14 @@ trigger:
 - master
 
 pool:
-  name: 'Default'
+  name: 'Default'  # Points to your self-hosted agent pool
 
 steps:
 # Step 1: Install .NET Core SDK
 - task: UseDotNet@2
   displayName: 'Install .NET Core SDK'
   inputs:
-    version: '8.x'
+    version: '8.x'  # Target .NET 8 SDK
     installationPath: 'C:\sdk'
 
 # Step 2: Verify .NET SDK Installation
@@ -51,4 +51,4 @@ steps:
   inputs:
     command: 'push'
     packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
-    arguments: '--source https://pkgs.dev.azure.com/dzhuga/StringExtensionLibrary/_packaging/donaldafeed/nuget/v3/index.json --api-key $(System.AccessToken)'
+    arguments: '--source https://pkgs.dev.azure.com/dzhuga/StringExtensionLibrary/_packaging/donaldafeed/nuget/v3/index.json --api-key $(System.AccessToken) --skip-duplicate'
