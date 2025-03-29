@@ -5,36 +5,41 @@ pool:
   name: 'Default'  # Points to your self-hosted agent pool
 
 steps:
+# Step 1: Install .NET Core SDK
 - task: UseDotNet@2
   displayName: 'Install .NET Core SDK'
   inputs:
     version: '8.x'  # Target .NET 8 SDK
     installationPath: 'C:\sdk'
 
-# Optional: Verify if .NET SDK is correctly installed
+# Step 2: Verify .NET SDK Installation (Optional Debugging Step)
 - script: |
-    echo Verifying .NET SDK...
+    echo "Verifying .NET SDK installation..."
     dotnet --version
   displayName: 'Verify .NET SDK Installation'
 
+# Step 3: Restore Dependencies
 - task: DotNetCoreCLI@2
   displayName: 'Restore dependencies'
   inputs:
     command: 'restore'
     projects: '**/*.csproj'
 
+# Step 4: Build the Project
 - task: DotNetCoreCLI@2
   displayName: 'Build project'
   inputs:
     command: 'build'
     projects: '**/*.csproj'
 
+# Step 5: Pack NuGet Package
 - task: DotNetCoreCLI@2
   displayName: 'Pack NuGet package'
   inputs:
     command: 'pack'
     arguments: '--output $(Build.ArtifactStagingDirectory)'
 
+# Step 6: Push NuGet Package to Azure Artifacts Feed
 - task: DotNetCoreCLI@2
   displayName: 'Push NuGet package to Azure Artifacts Feed'
   inputs:
