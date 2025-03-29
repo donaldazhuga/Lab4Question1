@@ -8,7 +8,9 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
-  feedName: 'donaldafeed'  # Updated to your specific feed name
+  feedName: 'donaldafeed'  # Your specific feed name
+  # For organization-scoped feeds:
+  feedUrl: 'https://pkgs.dev.azure.com/$(System.TeamFoundationCollectionUri)/_packaging/$(feedName)/nuget/v3/index.json'
 
 steps:
 - task: UseDotNet@2
@@ -21,6 +23,8 @@ steps:
   inputs:
     command: 'restore'
     projects: '**/*.csproj'
+    feedsToUse: 'select'
+    vstsFeed: '$(feedName)'
 
 - task: DotNetCoreCLI@2
   displayName: 'Build project'
@@ -40,13 +44,12 @@ steps:
     patchVersion: '0'
     outputDir: '$(Build.ArtifactStagingDirectory)'
 
-- task: NuGetAuthenticate@0
-  displayName: 'Authenticate with Azure Artifacts'
-
-- task: NuGetCommand@2
+# Modern authentication approach
+- task: DotNetCoreCLI@2
   displayName: 'Push to donaldafeed'
   inputs:
-    command: 'push'
+    command: 'nuget push'
     packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
-    nuGetFeedType: 'internal'
-    publishVstsFeed: '$(feedName)'
+    feedsToUse: 'select'
+    vstsFeed: '$(feedName)'
+    publishFeedCredentials: '$(System.AccessToken)'
