@@ -1,54 +1,43 @@
 trigger:
-- main
+- master
 
 pool:
-  name: Default  # Your self-hosted agent pool
-  demands:
-  - agent.os -equals Windows_NT
-
-variables:
-  buildConfiguration: 'Release'
-  feedName: 'donaldafeed'  # Your specific feed name
-  feedUrl: 'https://pkgs.dev.azure.com/$(System.TeamFoundationCollectionUri)/_packaging/$(feedName)/nuget/v3/index.json'
+  name: 'Default'  # Points to your self-hosted agent pool
 
 steps:
 - task: UseDotNet@2
-  displayName: 'Install .NET 8 SDK'
+  displayName: 'Install .NET Core SDK'
   inputs:
-    version: '8.x'
+    version: '8.x'  # Target .NET 8 SDK
+    installationPath: 'C:\sdk'
+
+# Optional: Verify if .NET SDK is correctly installed
+- script: |
+    echo Verifying .NET SDK...
+    dotnet --version
+  displayName: 'Verify .NET SDK Installation'
 
 - task: DotNetCoreCLI@2
   displayName: 'Restore dependencies'
   inputs:
     command: 'restore'
     projects: '**/*.csproj'
-    feedsToUse: 'select'
-    vstsFeed: '$(feedName)'
 
 - task: DotNetCoreCLI@2
   displayName: 'Build project'
   inputs:
     command: 'build'
     projects: '**/*.csproj'
-    arguments: '--configuration $(buildConfiguration)'
 
 - task: DotNetCoreCLI@2
-  displayName: 'Create NuGet package'
+  displayName: 'Pack NuGet package'
   inputs:
     command: 'pack'
-    packagesToPack: '**/StringExtensionLibrary.csproj'
-    versioningScheme: 'byPrereleaseNumber'
-    majorVersion: '1'
-    minorVersion: '0'
-    patchVersion: '0'
-    outputDir: '$(Build.ArtifactStagingDirectory)'
+    arguments: '--output $(Build.ArtifactStagingDirectory)'
 
-# Corrected push command using 'custom'
 - task: DotNetCoreCLI@2
-  displayName: 'Push to donaldafeed'
+  displayName: 'Push NuGet package to Azure Artifacts Feed'
   inputs:
-    command: 'custom'
-    custom: 'push'
-    arguments: '$(Build.ArtifactStagingDirectory)/*.nupkg --source $(feedUrl) --api-key az'
-    feedsToUse: 'select'
-    vstsFeed: '$(feedName)'
+    command: 'push'
+    packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
+    arguments: '--source https://pkgs.dev.azure.com/dzhuga/StringExtensionLibrary/_packaging/donaldafeed/nuget/v3/index.json --api-key $(System.AccessToken)'
