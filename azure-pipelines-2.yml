@@ -9,7 +9,6 @@ pool:
 variables:
   buildConfiguration: 'Release'
   feedName: 'donaldafeed'  # Your specific feed name
-  # For organization-scoped feeds:
   feedUrl: 'https://pkgs.dev.azure.com/$(System.TeamFoundationCollectionUri)/_packaging/$(feedName)/nuget/v3/index.json'
 
 steps:
@@ -44,12 +43,12 @@ steps:
     patchVersion: '0'
     outputDir: '$(Build.ArtifactStagingDirectory)'
 
-# Modern authentication approach
+# Corrected push command using 'custom'
 - task: DotNetCoreCLI@2
   displayName: 'Push to donaldafeed'
   inputs:
-    command: 'nuget push'
-    packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
+    command: 'custom'
+    custom: 'push'
+    arguments: '$(Build.ArtifactStagingDirectory)/*.nupkg --source $(feedUrl) --api-key az'
     feedsToUse: 'select'
     vstsFeed: '$(feedName)'
-    publishFeedCredentials: '$(System.AccessToken)'
