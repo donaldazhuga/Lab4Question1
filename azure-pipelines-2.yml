@@ -48,9 +48,10 @@ steps:
   displayName: 'Authenticate with Azure Artifacts'
 
 - task: NuGetCommand@2
-  displayName: 'Push NuGet package'
+  displayName: 'Push to Azure Artifacts'
   inputs:
     command: 'push'
     packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
     nuGetFeedType: 'internal'
-    publishVstsFeed: 'donaldafeed'  # Use just your feed name here
+    publishVstsFeed: 'donaldafeed'  # Use exact feed name here
+    allowPackageConflicts: true
