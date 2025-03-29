@@ -46,3 +46,10 @@ steps:
     command: 'push'
     packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
     arguments: '--source https://pkgs.dev.azure.com/dzhuga/StringExtensionLibrary/_packaging/donaldafeed/nuget/v3/index.json --api-key $(System.AccessToken)'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Push NuGet package to Azure Artifacts Feed'
+  inputs:
+    command: 'push'
+    packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
+    arguments: '--source https://pkgs.dev.azure.com/dzhuga/StringExtensionLibrary/_packaging/donaldafeed/nuget/v3/index.json --api-key $(System.AccessToken)'
