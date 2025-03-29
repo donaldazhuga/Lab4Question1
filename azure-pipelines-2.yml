@@ -1,54 +1,34 @@
+
+# .NET Desktop
+# Build and run tests for .NET Desktop or Windows classic desktop solutions.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/apps/windows/dot-net
+
 trigger:
 - master
 
 pool:
-  name: 'Default'  # Points to your self-hosted agent pool
+  name: Default
+
+variables:
+  solution: '/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
 
 steps:
-# Step 1: Install .NET Core SDK
-- task: UseDotNet@2
-  displayName: 'Install .NET Core SDK'
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
   inputs:
-    version: '8.x'  # Target .NET 8 SDK
-    installationPath: 'C:\sdk'
+    restoreSolution: '$(solution)'
 
-# Step 2: Verify .NET SDK Installation
-- script: |
-    echo "Verifying .NET SDK installation..."
-    dotnet --version
-  displayName: 'Verify .NET SDK Installation'
-
-# Step 3: Restore Dependencies
-- task: DotNetCoreCLI@2
-  displayName: 'Restore dependencies'
+- task: VSBuild@1
   inputs:
-    command: 'restore'
-    projects: '**/*.csproj'
+    solution: '$(solution)'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
 
-# Step 4: Build the Project
-- task: DotNetCoreCLI@2
-  displayName: 'Build project'
+- task: VSTest@2
   inputs:
-    command: 'build'
-    projects: '**/*.csproj'
-
-# Step 5: Pack NuGet Package
-- task: DotNetCoreCLI@2
-  displayName: 'Pack NuGet package'
-  inputs:
-    command: 'pack'
-    arguments: '--output $(Build.ArtifactStagingDirectory)'
-
-# Debugging Step: Verify NuGet package exists
-- script: |
-    echo "Checking for NuGet package files..."
-    dir $(Build.ArtifactStagingDirectory)
-  displayName: 'Debugging: Check for NuGet package files'
-
-# Step 6: Push NuGet Package
-- task: DotNetCoreCLI@2
-  displayName: 'Push NuGet package to Azure Artifacts Feed'
-  inputs:
-    command: 'push'
-    packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
-    arguments: '--source https://pkgs.dev.azure.com/dzhuga/StringExtensionLibrary/_packaging/donaldafeed/nuget/v3/index.json --api-key $(System.AccessToken) --skip-duplicate'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
