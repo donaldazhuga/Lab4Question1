@@ -8,11 +8,12 @@ steps:
 - task: UseDotNet@2
   displayName: 'Install .NET Core SDK'
   inputs:
-    version: '8.x'
+    version: '8.x'  # Target .NET 8 SDK
     installationPath: 'C:\sdk'
 
 # Optional: Verify if .NET SDK is correctly installed
 - script: |
+    echo Verifying .NET SDK...
     dotnet --version
   displayName: 'Verify .NET SDK Installation'
 
