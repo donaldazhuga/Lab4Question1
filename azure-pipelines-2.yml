@@ -8,11 +8,12 @@ steps:
 - task: UseDotNet@2
   displayName: 'Install .NET Core SDK'
   inputs:
-    version: '8.x'
+    version: '8.x'  # Target .NET 8 SDK
     installationPath: 'C:\sdk'
 
 # Optional: Verify if .NET SDK is correctly installed
 - script: |
+    echo Verifying .NET SDK...
     dotnet --version
   displayName: 'Verify .NET SDK Installation'
 
@@ -38,4 +39,5 @@ steps:
   displayName: 'Push NuGet package to Azure Artifacts Feed'
   inputs:
     command: 'push'
-    arguments: '--source https://pkgs.dev.azure.com/dzhuga/newfeed/_packaging/newfeed/nuget/v3/index.json --api-key $(System.AccessToken)'
+    packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
+    arguments: '--source https://pkgs.dev.azure.com/dzhuga/StringExtensionLibrary/_packaging/donaldafeed/nuget/v3/index.json --api-key $(System.AccessToken)'
