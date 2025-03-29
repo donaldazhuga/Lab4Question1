@@ -2,18 +2,17 @@ trigger:
 - master
 
 pool:
-  name: Default  # Use the self-hosted agent as required in your exercise
+  name: 'Default'  # Points to your self-hosted agent pool
 
 steps:
 - task: UseDotNet@2
   displayName: 'Install .NET Core SDK'
   inputs:
-    version: '8.x'  # Target .NET 8 framework
+    version: '8.x'
     installationPath: 'C:\sdk'
 
-# Optional: Verify if .NET SDK is installed and accessible
+# Optional: Verify if .NET SDK is correctly installed
 - script: |
-    echo "Checking .NET SDK version..."
     dotnet --version
   displayName: 'Verify .NET SDK Installation'
 
@@ -35,10 +34,8 @@ steps:
     command: 'pack'
     arguments: '--output $(Build.ArtifactStagingDirectory)'
 
-# Push NuGet package(s) to the Azure Artifacts Feed
 - task: DotNetCoreCLI@2
   displayName: 'Push NuGet package to Azure Artifacts Feed'
   inputs:
     command: 'push'
-    packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
     arguments: '--source https://pkgs.dev.azure.com/dzhuga/newfeed/_packaging/newfeed/nuget/v3/index.json --api-key $(System.AccessToken)'
