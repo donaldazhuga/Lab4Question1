@@ -4,14 +4,17 @@ trigger:
 pool:
   name: 'Default'  # Points to your self-hosted agent pool
 
+variables:
+  buildConfiguration: 'Release'
+
 steps:
 - task: UseDotNet@2
   displayName: 'Install .NET Core SDK'
   inputs:
-    version: '8.x'  # Target .NET 8 SDK
+    version: '8.x'
     installationPath: 'C:\sdk'
 
-# Optional: Verify if .NET SDK is correctly installed
+# Optional verification
 - script: |
     echo Verifying .NET SDK...
     dotnet --version
@@ -28,16 +31,26 @@ steps:
   inputs:
     command: 'build'
     projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration)'
 
 - task: DotNetCoreCLI@2
   displayName: 'Pack NuGet package'
   inputs:
     command: 'pack'
-    arguments: '--output $(Build.ArtifactStagingDirectory)'
+    packagesToPack: '**/*.csproj'
+    versioningScheme: 'byPrereleaseNumber'
+    majorVersion: '1'
+    minorVersion: '0'
+    patchVersion: '0'
+    outputDir: '$(Build.ArtifactStagingDirectory)'
 
-- task: DotNetCoreCLI@2
-  displayName: 'Push NuGet package to Azure Artifacts Feed'
+- task: NuGetAuthenticate@0
+  displayName: 'Authenticate with Azure Artifacts'
+
+- task: NuGetCommand@2
+  displayName: 'Push NuGet package'
   inputs:
     command: 'push'
     packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
-    arguments: '--source https://pkgs.dev.azure.com/dzhuga/StringExtensionLibrary/_packaging/donaldafeed/nuget/v3/index.json --api-key $(System.AccessToken)'
+    nuGetFeedType: 'internal'
+    publishVstsFeed: 'donaldafeed'  # Use just your feed name here
