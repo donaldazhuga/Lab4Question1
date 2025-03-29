@@ -1,24 +1,20 @@
 trigger:
-- master
+- main
 
 pool:
-  name: 'Default'  # Points to your self-hosted agent pool
+  name: Default  # Your self-hosted agent pool
+  demands:
+  - agent.os -equals Windows_NT
 
 variables:
   buildConfiguration: 'Release'
+  feedName: 'donaldafeed'  # Updated to your specific feed name
 
 steps:
 - task: UseDotNet@2
-  displayName: 'Install .NET Core SDK'
+  displayName: 'Install .NET 8 SDK'
   inputs:
     version: '8.x'
-    installationPath: 'C:\sdk'
-
-# Optional verification
-- script: |
-    echo Verifying .NET SDK...
-    dotnet --version
-  displayName: 'Verify .NET SDK Installation'
 
 - task: DotNetCoreCLI@2
   displayName: 'Restore dependencies'
@@ -34,10 +30,10 @@ steps:
     arguments: '--configuration $(buildConfiguration)'
 
 - task: DotNetCoreCLI@2
-  displayName: 'Pack NuGet package'
+  displayName: 'Create NuGet package'
   inputs:
     command: 'pack'
-    packagesToPack: '**/*.csproj'
+    packagesToPack: '**/StringExtensionLibrary.csproj'
     versioningScheme: 'byPrereleaseNumber'
     majorVersion: '1'
     minorVersion: '0'
@@ -48,10 +44,9 @@ steps:
   displayName: 'Authenticate with Azure Artifacts'
 
 - task: NuGetCommand@2
-  displayName: 'Push to Azure Artifacts'
+  displayName: 'Push to donaldafeed'
   inputs:
     command: 'push'
     packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
     nuGetFeedType: 'internal'
-    publishVstsFeed: 'donaldafeed'  # Use exact feed name here
-    allowPackageConflicts: true
+    publishVstsFeed: '$(feedName)'
