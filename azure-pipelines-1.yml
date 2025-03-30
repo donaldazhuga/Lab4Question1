@@ -8,7 +8,7 @@ variables:
   buildConfiguration: 'Release'
   packageVersion: '1.0.0'
   projectName: 'StringLibrary'
-  feedName: 'newfeed'
+  feedName: 'StringExtensionLibrary/newfeed'  # CHANGED TO PROJECT-SCOPED FEED
   feedUrl: 'https://pkgs.dev.azure.com/dzhuga/StringExtensionLibrary/_packaging/newfeed/nuget/v3/index.json'
 
 steps:
@@ -26,7 +26,7 @@ steps:
     <configuration>
       <packageSources>
         <clear />
-        <add key="$(feedName)" value="$(feedUrl)" />
+        <add key="newfeed" value="$(feedUrl)" />  # CHANGED KEY TO MATCH FEED NAME
       </packageSources>
     </configuration>
     "@ | Out-File -FilePath 'nuget.config' -Encoding utf8
@@ -63,19 +63,16 @@ steps:
     versionEnvVar: 'packageVersion'
     arguments: '--verbosity detailed'
 
-# Step 6: Authenticate
+# Step 6: Authenticate (SINGLE AUTHENTICATION STEP)
 - task: NuGetAuthenticate@1
   displayName: 'Authenticate with Azure Artifacts'
 
-#  Step 7: Push to Azure Artifacts (FIXED)
-- task: NuGetAuthenticate@1
-  displayName: 'Authenticate with Azure Artifacts'
-
+# Step 7: Push to Azure Artifacts (FIXED)
 - task: DotNetCoreCLI@2
   displayName: 'Push to Azure Artifacts'
   inputs:
     command: 'push'
     packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
     nuGetFeedType: 'internal'
-    publishVstsFeed: '$(feedName)'  # Just 'newfeed' for org-scoped feed
+    publishVstsFeed: '$(feedName)'  # Now uses correct project-scoped reference
     arguments: '--verbosity detailed'
