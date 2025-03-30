@@ -62,7 +62,8 @@ steps:
   inputs:
     command: 'push'
     packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
-    arguments: '--source https://pkgs.dev.azure.com/dzhuga/StringExtensionLibrary/_packaging/newfeed/nuget/v3/index.json --api-key $(System.AccessToken) --skip-duplicate'
+    nuGetFeedType: 'internal'
+    publishVstsFeed: 'dzhuga/StringExtensionLibrary/newfeed'
 
 # Debugging Step: Verify NuGet Configuration
 - script: |
