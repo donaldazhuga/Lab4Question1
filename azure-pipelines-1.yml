@@ -6,12 +6,9 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
+  packageVersion: '1.0.0'  # Explicit version instead of byBuildNumber
   projectName: 'StringExtensionLibrary'
-  # Try these different patterns one by one:
-  # projectPattern: '**/*.csproj'                        # Most general
-  # projectPattern: '**/$(projectName).csproj'           # By project name
-  projectPattern: '**/src/**/$(projectName).csproj'      # Common src folder structure
-  # projectPattern: '$(Build.SourcesDirectory)/$(projectName).csproj'  # Root level
+  projectFile: '**/$(projectName).csproj'
 
 steps:
 # Step 1: Install .NET 8 SDK
@@ -21,28 +18,28 @@ steps:
     version: '8.x'
     installationPath: 'C:\sdk'
 
-# Step 2: Deep repository inspection
+# Step 2: Debug repository structure
 - powershell: |
-    Write-Host "##[section]Full Repository Structure:"
+    Write-Host "##[section]Repository Contents:"
     Get-ChildItem -Path $(Build.SourcesDirectory) -Recurse | Format-Table FullName
     
-    Write-Host "##[section]All .csproj Files Found:"
-    $projFiles = Get-ChildItem -Path $(Build.SourcesDirectory) -Filter *.csproj -Recurse -ErrorAction SilentlyContinue
-    if ($projFiles) {
-        $projFiles | Format-Table FullName
-        Write-Host "##vso[task.setvariable variable=foundProjectFile]$($projFiles[0].FullName)"
+    Write-Host "##[section]Searching for project file: $(projectFile)"
+    $projFile = Get-ChildItem -Path $(Build.SourcesDirectory) -Filter '$(projectName).csproj' -Recurse
+    if ($projFile) {
+        Write-Host "##[section]Found project at: $($projFile.FullName)"
+        Write-Host "##vso[task.setvariable variable=actualProjectFile]$($projFile.FullName)"
     } else {
-        Write-Host "##vso[task.logissue type=error]No .csproj files found in repository!"
+        Write-Host "##vso[task.logissue type=error]Project file not found!"
         exit 1
     }
-  displayName: 'Debug: Locate Project File'
+  displayName: 'Locate Project File'
 
-# Step 3: Restore using found project file
+# Step 3: Restore packages
 - task: DotNetCoreCLI@2
   displayName: 'Restore packages'
   inputs:
     command: 'restore'
-    projects: '$(foundProjectFile)'
+    projects: '$(actualProjectFile)'
     feedsToUse: 'select'
     vstsFeed: 'dzhuga/StringExtensionLibrary/newfeed'
 
@@ -51,26 +48,42 @@ steps:
   displayName: 'Build project'
   inputs:
     command: 'build'
-    projects: '$(foundProjectFile)'
+    projects: '$(actualProjectFile)'
     arguments: '--configuration $(buildConfiguration) --no-restore'
 
-# Step 5: Pack NuGet package
+# Step 5: Pack NuGet package (Fixed Versioning)
 - task: DotNetCoreCLI@2
   displayName: 'Create NuGet package'
   inputs:
     command: 'pack'
-    packagesToPack: '$(foundProjectFile)'
+    packagesToPack: '$(actualProjectFile)'
     configuration: '$(buildConfiguration)'
     outputDir: '$(Build.ArtifactStagingDirectory)'
     nobuild: true
-    versioningScheme: 'byBuildNumber'
+    versioningScheme: 'byEnvVar'  # Changed from byBuildNumber
+    versionEnvVar: 'packageVersion'  # Uses our explicit version variable
+    verbosityPack: 'detailed'
 
 # Step 6: Verify package
 - powershell: |
-    $nupkg = Get-ChildItem -Path $(Build.ArtifactStagingDirectory) -Filter *.nupkg
-    if (!$nupkg) {
-        Write-Host "##vso[task.logissue type=error]No .nupkg file was created!"
+    $nupkg = Get-ChildItem -Path $(Build.ArtifactStagingDirectory) -Filter '*.nupkg'
+    if ($nupkg) {
+        Write-Host "##[section]Successfully created package:"
+        $nupkg | Format-Table FullName,Length,LastWriteTime
+    } else {
+        Write-Host "##vso[task.logissue type=error]Package creation failed!"
         exit 1
     }
-    Write-Host "##[section]Created package: $($nupkg.FullName)"
-  displayName: 'Verify Package Creation'
+  displayName: 'Verify Package'
+
+# Step 7: Push to Azure Artifacts
+- task: NuGetAuthenticate@1
+  displayName: 'Authenticate with Azure Artifacts'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Push to Azure Artifacts'
+  inputs:
+    command: 'push'
+    packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
+    nuGetFeedType: 'internal'
+    publishVstsFeed: 'dzhuga/StringExtensionLibrary/newfeed'
