@@ -67,12 +67,15 @@ steps:
 - task: NuGetAuthenticate@1
   displayName: 'Authenticate with Azure Artifacts'
 
-# Step 7: Push to Azure Artifacts (CORRECTED)
+#  Step 7: Push to Azure Artifacts (FIXED)
+- task: NuGetAuthenticate@1
+  displayName: 'Authenticate with Azure Artifacts'
+
 - task: DotNetCoreCLI@2
   displayName: 'Push to Azure Artifacts'
   inputs:
     command: 'push'
     packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
-    feedsToUse: 'config'
-    nugetConfigPath: 'nuget.config'
-    arguments: '--verbosity detailed'  # Correct way to set verbosity
+    nuGetFeedType: 'internal'
+    publishVstsFeed: '$(feedName)'  # Just 'newfeed' for org-scoped feed
+    arguments: '--verbosity detailed'
