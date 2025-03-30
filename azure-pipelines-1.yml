@@ -6,8 +6,12 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
-  projectName: 'StringExtensionLibrary'  # Your project name
-  projectFile: '**/$(projectName).csproj'  # Dynamic project file path
+  projectName: 'StringExtensionLibrary'
+  # Try these different patterns one by one:
+  # projectPattern: '**/*.csproj'                        # Most general
+  # projectPattern: '**/$(projectName).csproj'           # By project name
+  projectPattern: '**/src/**/$(projectName).csproj'      # Common src folder structure
+  # projectPattern: '$(Build.SourcesDirectory)/$(projectName).csproj'  # Root level
 
 steps:
 # Step 1: Install .NET 8 SDK
@@ -17,27 +21,37 @@ steps:
     version: '8.x'
     installationPath: 'C:\sdk'
 
-# Step 2: Debug - Show directory structure
+# Step 2: Deep repository inspection
 - powershell: |
-    Write-Host "##[section]Repository Structure:"
+    Write-Host "##[section]Full Repository Structure:"
     Get-ChildItem -Path $(Build.SourcesDirectory) -Recurse | Format-Table FullName
-    Write-Host "##[section]Looking for project file: $(projectFile)"
-    Get-ChildItem -Path $(Build.SourcesDirectory) -Filter *.csproj -Recurse
-  displayName: 'Debug: Show Directory Structure'
+    
+    Write-Host "##[section]All .csproj Files Found:"
+    $projFiles = Get-ChildItem -Path $(Build.SourcesDirectory) -Filter *.csproj -Recurse -ErrorAction SilentlyContinue
+    if ($projFiles) {
+        $projFiles | Format-Table FullName
+        Write-Host "##vso[task.setvariable variable=foundProjectFile]$($projFiles[0].FullName)"
+    } else {
+        Write-Host "##vso[task.logissue type=error]No .csproj files found in repository!"
+        exit 1
+    }
+  displayName: 'Debug: Locate Project File'
 
-# Step 3: Restore packages
+# Step 3: Restore using found project file
 - task: DotNetCoreCLI@2
   displayName: 'Restore packages'
   inputs:
     command: 'restore'
-    projects: '$(projectFile)'
+    projects: '$(foundProjectFile)'
+    feedsToUse: 'select'
+    vstsFeed: 'dzhuga/StringExtensionLibrary/newfeed'
 
 # Step 4: Build project
 - task: DotNetCoreCLI@2
   displayName: 'Build project'
   inputs:
     command: 'build'
-    projects: '$(projectFile)'
+    projects: '$(foundProjectFile)'
     arguments: '--configuration $(buildConfiguration) --no-restore'
 
 # Step 5: Pack NuGet package
@@ -45,20 +59,18 @@ steps:
   displayName: 'Create NuGet package'
   inputs:
     command: 'pack'
-    packagesToPack: '$(projectFile)'
+    packagesToPack: '$(foundProjectFile)'
     configuration: '$(buildConfiguration)'
     outputDir: '$(Build.ArtifactStagingDirectory)'
     nobuild: true
     versioningScheme: 'byBuildNumber'
-    verbosityPack: 'detailed'
 
-# Step 6: Verify package creation
+# Step 6: Verify package
 - powershell: |
-    $packages = Get-ChildItem -Path $(Build.ArtifactStagingDirectory) -Filter *.nupkg
-    if (!$packages) {
-        Write-Host "##vso[task.logissue type=error]No packages found in $(Build.ArtifactStagingDirectory)"
+    $nupkg = Get-ChildItem -Path $(Build.ArtifactStagingDirectory) -Filter *.nupkg
+    if (!$nupkg) {
+        Write-Host "##vso[task.logissue type=error]No .nupkg file was created!"
         exit 1
     }
-    Write-Host "##[section]Created packages:"
-    $packages | Format-Table FullName
+    Write-Host "##[section]Created package: $($nupkg.FullName)"
   displayName: 'Verify Package Creation'
