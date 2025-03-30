@@ -6,7 +6,7 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
-  packageVersion: '1.0.$(Build.BuildId)'  # Auto-increment version
+  packageVersion: '1.0.$(Build.BuildId)'
   projectName: 'StringLibrary'
   feedName: 'StringExtensionLibrary/newfeed'
   feedUrl: 'https://pkgs.dev.azure.com/dzhuga/StringExtensionLibrary/_packaging/newfeed/nuget/v3/index.json'
@@ -51,7 +51,7 @@ steps:
     projects: '**/$(projectName).csproj'
     arguments: '--configuration $(buildConfiguration) --no-restore --verbosity detailed'
 
-# Step 5: Pack NuGet package (with auto-versioning)
+# Step 5: Pack NuGet package
 - task: DotNetCoreCLI@2
   displayName: 'Create NuGet package'
   inputs:
@@ -64,17 +64,18 @@ steps:
     versionEnvVar: 'packageVersion'
     arguments: '--verbosity detailed'
 
-# Step 6: Debug - Show package files
+# Step 6: Debug - Show package files (FIXED FOR WINDOWS)
 - script: |
-    echo "Generated packages:"
-    ls $(Build.ArtifactStagingDirectory)
+    echo Generated packages:
+    dir /B "$(Build.ArtifactStagingDirectory)"
   displayName: 'List generated packages'
+  failOnStderr: false
 
 # Step 7: Authenticate
 - task: NuGetAuthenticate@1
   displayName: 'Authenticate with Azure Artifacts'
 
-# Step 8: Push to Azure Artifacts (with duplicate handling)
+# Step 8: Push to Azure Artifacts
 - task: DotNetCoreCLI@2
   displayName: 'Push to Azure Artifacts'
   inputs:
