@@ -1,8 +1,8 @@
-# ASP.NET Pipeline for StringExtensionLibrary
+# ASP.NET Pipeline for StringExtensionLibrary (master branch)
 # Build, pack, and push .NET 8 NuGet package to Azure Artifacts
 
 trigger:
-- main  # Changed from 'master' to 'main' to match modern GitHub defaults
+- master  # Keeping as 'master' to match your repository
 
 pool:
   name: 'AgentDonalda'  # Self-hosted agent pool
@@ -10,7 +10,7 @@ pool:
 variables:
   buildConfiguration: 'Release'
   solution: '**/*.sln'
-  nugetFeed: 'dzhuga/StringExtensionLibrary/newfeed'  # Centralized feed reference
+  nugetFeed: 'dzhuga/StringExtensionLibrary/newfeed'  # Your Azure Artifacts feed
 
 steps:
 # Step 1: Install .NET 8 SDK
@@ -19,63 +19,54 @@ steps:
   inputs:
     version: '8.x'
     installationPath: 'C:\sdk'
-    includePreviewVersions: false
 
-# Step 2: Verify .NET SDK Installation
+# Step 2: Verify .NET installation
 - script: |
-    echo "Verifying .NET SDK installation..."
+    echo "DotNET Version:"
     dotnet --version
+    echo "Installed SDKs:"
     dotnet --list-sdks
-  displayName: 'Verify .NET SDK Installation'
+  displayName: 'Verify .NET Installation'
 
-# Step 3: Debug working directory
+# Step 3: Debug workspace
 - script: |
-    echo "Contents of working directory:"
-    dir $(Build.SourcesDirectory) /s /b
-  displayName: 'Inspect Working Directory'
+    echo "Workspace contents:"
+    dir $(Build.SourcesDirectory)
+  displayName: 'Inspect Workspace'
 
-# Step 4: Restore NuGet dependencies
+# Step 4: Restore NuGet packages
 - task: NuGetCommand@2
-  displayName: 'Restore dependencies'
+  displayName: 'Restore packages'
   inputs:
     command: 'restore'
     restoreSolution: '$(solution)'
     feedsToUse: 'select'
     vstsFeed: '$(nugetFeed)'
-    noCache: true
 
-# Step 5: Build the solution
+# Step 5: Build solution
 - task: DotNetCoreCLI@2
   displayName: 'Build solution'
   inputs:
     command: 'build'
     projects: '$(solution)'
-    arguments: '--configuration $(buildConfiguration) --no-restore'
+    arguments: '--configuration $(buildConfiguration)'
 
 # Step 6: Create NuGet package
 - task: DotNetCoreCLI@2
-  displayName: 'Pack NuGet package'
+  displayName: 'Create NuGet package'
   inputs:
     command: 'pack'
     packagesToPack: '**/StringExtensionLibrary.csproj'
-    versioningScheme: 'byBuildNumber'
     configuration: '$(buildConfiguration)'
     outputDir: '$(Build.ArtifactStagingDirectory)'
-    arguments: '--no-build'
 
-# Step 7: Verify package creation
+# Step 7: Verify package
 - script: |
     echo "Generated packages:"
-    dir $(Build.ArtifactStagingDirectory) /s /b
-    echo "Package contents:"
-    nuget.exe list -Source "$(Build.ArtifactStagingDirectory)"
-  displayName: 'Verify NuGet Package'
+    dir $(Build.ArtifactStagingDirectory)
+  displayName: 'Verify Package'
 
-# Step 8: Authenticate with Azure Artifacts
-- task: NuGetAuthenticate@1
-  displayName: 'Authenticate with Azure Artifacts'
-
-# Step 9: Push package to feed
+# Step 8: Push to Azure Artifacts
 - task: NuGetCommand@2
   displayName: 'Push to Azure Artifacts'
   inputs:
@@ -83,5 +74,4 @@ steps:
     packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
     nuGetFeedType: 'internal'
     publishVstsFeed: '$(nugetFeed)'
-    allowPackageConflicts: false
     verbosityPush: 'Detailed'
