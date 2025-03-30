@@ -1,74 +1,65 @@
-# ASP.NET Pipeline
-# Build and test ASP.NET projects.
-# Add steps that publish symbols, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/apps/aspnet/build-aspnet-4
-
 trigger:
-- master
+- main
 
 pool:
-  name: 'AgentDonalda'  # Points to your self-hosted agent pool
+  name: 'AgentDonalda'  # Self-hosted agent
+
+variables:
+  buildConfiguration: 'Release'
+  nugetFeed: 'StringExtensionLibrary/newfeed'  # Format: 'ProjectName/FeedName'
 
 steps:
-# Step 1: Install .NET Core SDK
+# Step 1: Install .NET 8 SDK
 - task: UseDotNet@2
-  displayName: 'Install .NET Core SDK'
+  displayName: 'Install .NET 8 SDK'
   inputs:
-    version: '8.x'  # Target .NET 8 SDK
+    version: '8.x'
     installationPath: 'C:\sdk'
 
-# Step 2: Verify .NET SDK Installation
-- script: |
-    echo "Verifying .NET SDK installation..."
-    dotnet --version
-  displayName: 'Verify .NET SDK Installation'
-
-# Debugging Step: List Working Directory Contents
-- script: |
-    echo "Debugging working directory..."
-    dir $(Build.SourcesDirectory)
-  displayName: 'Debug Working Directory'
-
-# Step 3: Restore Dependencies
-- task: NuGetCommand@2
+# Step 2: Restore dependencies
+- task: DotNetCoreCLI@2
   displayName: 'Restore dependencies'
   inputs:
     command: 'restore'
-    restoreSolution: '**/*.sln'
-    feedsToUse: 'select'
-    vstsFeed: 'dzhuga/StringExtensionLibrary/newfeed'
+    projects: '**/*.csproj'
 
-# Step 4: Build the Project
+# Step 3: Build the project
 - task: DotNetCoreCLI@2
   displayName: 'Build project'
   inputs:
     command: 'build'
+    arguments: '--configuration $(buildConfiguration) --verbosity normal'
     projects: '**/*.csproj'
 
-# Step 5: Pack NuGet Package
+# Step 4: Run tests (if any)
+- task: DotNetCoreCLI@2
+  displayName: 'Run tests'
+  inputs:
+    command: 'test'
+    projects: '**/*Tests.csproj'
+    arguments: '--configuration $(buildConfiguration)'
+
+# Step 5: Pack NuGet package
 - task: DotNetCoreCLI@2
   displayName: 'Pack NuGet package'
   inputs:
     command: 'pack'
-    arguments: '--output $(Build.ArtifactStagingDirectory)'
+    packagesToPack: '**/StringExtensionLibrary.csproj'
+    versioningScheme: 'byBuildNumber'
+    configuration: '$(buildConfiguration)'
+    outputDir: '$(Build.ArtifactStagingDirectory)'
+    arguments: '--verbosity normal'
 
-# Debugging Step: Verify NuGet package exists
-- script: |
-    echo "Checking for NuGet package files..."
-    dir $(Build.ArtifactStagingDirectory)
-  displayName: 'Debugging: Check NuGet Package Files'
+# Step 6: Authenticate with Azure Artifacts
+- task: NuGetAuthenticate@1
+  displayName: 'NuGet Authenticate'
 
-# Step 6: Push NuGet Package to Azure Artifacts Feed
-- task: NuGetCommand@2
-  displayName: 'Push NuGet package to Azure Artifacts Feed'
+# Step 7: Push to Azure Artifacts
+- task: DotNetCoreCLI@2
+  displayName: 'Push to Azure Artifacts'
   inputs:
     command: 'push'
     packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
     nuGetFeedType: 'internal'
-    publishVstsFeed: 'dzhuga/StringExtensionLibrary/newfeed'
-
-# Debugging Step: Verify NuGet Configuration
-- script: |
-    echo "Checking NuGet configuration..."
-    nuget.exe list source
-  displayName: 'Debug NuGet Configuration'
+    publishVstsFeed: '$(nugetFeed)'
+    arguments: '--verbosity detailed'  # This is the correct way to set verbosity
