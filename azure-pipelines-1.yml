@@ -6,7 +6,8 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
-  projectPath: '**/StringExtensionLibrary.csproj'  # Explicit path to your project file
+  projectName: 'StringExtensionLibrary'  # Your project name
+  projectFile: '**/$(projectName).csproj'  # Dynamic project file path
 
 steps:
 # Step 1: Install .NET 8 SDK
@@ -16,63 +17,48 @@ steps:
     version: '8.x'
     installationPath: 'C:\sdk'
 
-# Step 2: Verify .NET installation
-- script: |
-    echo "DotNET Version:"
-    dotnet --version
-    echo "Installed SDKs:"
-    dotnet --list-sdks
-    echo "Project directory contents:"
-    dir $(Build.SourcesDirectory) /s
-  displayName: 'Verify Environment'
+# Step 2: Debug - Show directory structure
+- powershell: |
+    Write-Host "##[section]Repository Structure:"
+    Get-ChildItem -Path $(Build.SourcesDirectory) -Recurse | Format-Table FullName
+    Write-Host "##[section]Looking for project file: $(projectFile)"
+    Get-ChildItem -Path $(Build.SourcesDirectory) -Filter *.csproj -Recurse
+  displayName: 'Debug: Show Directory Structure'
 
-# Step 3: Restore NuGet packages
+# Step 3: Restore packages
 - task: DotNetCoreCLI@2
   displayName: 'Restore packages'
   inputs:
     command: 'restore'
-    projects: '$(projectPath)'
+    projects: '$(projectFile)'
 
 # Step 4: Build project
 - task: DotNetCoreCLI@2
   displayName: 'Build project'
   inputs:
     command: 'build'
-    projects: '$(projectPath)'
+    projects: '$(projectFile)'
     arguments: '--configuration $(buildConfiguration) --no-restore'
 
-# Step 5: Create NuGet package (FIXED)
+# Step 5: Pack NuGet package
 - task: DotNetCoreCLI@2
   displayName: 'Create NuGet package'
   inputs:
     command: 'pack'
-    packagesToPack: '$(projectPath)'
+    packagesToPack: '$(projectFile)'
     configuration: '$(buildConfiguration)'
     outputDir: '$(Build.ArtifactStagingDirectory)'
     nobuild: true
     versioningScheme: 'byBuildNumber'
     verbosityPack: 'detailed'
 
-# Step 6: Verify package
-- script: |
-    echo "Generated packages:"
-    dir $(Build.ArtifactStagingDirectory) /s
-    if exist "$(Build.ArtifactStagingDirectory)\*.nupkg" (
-      echo "Package created successfully"
-    ) else (
-      echo "##vso[task.logissue type=error]No package was created"
-      exit 1
-    )
+# Step 6: Verify package creation
+- powershell: |
+    $packages = Get-ChildItem -Path $(Build.ArtifactStagingDirectory) -Filter *.nupkg
+    if (!$packages) {
+        Write-Host "##vso[task.logissue type=error]No packages found in $(Build.ArtifactStagingDirectory)"
+        exit 1
+    }
+    Write-Host "##[section]Created packages:"
+    $packages | Format-Table FullName
   displayName: 'Verify Package Creation'
-
-# Step 7: Push to Azure Artifacts
-- task: NuGetAuthenticate@1
-  displayName: 'Authenticate with Azure Artifacts'
-
-- task: DotNetCoreCLI@2
-  displayName: 'Push to Azure Artifacts'
-  inputs:
-    command: 'push'
-    packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
-    nuGetFeedType: 'internal'
-    publishVstsFeed: 'dzhuga/StringExtensionLibrary/newfeed'
