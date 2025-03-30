@@ -34,14 +34,14 @@ steps:
   displayName: 'Restore dependencies'
   inputs:
     command: 'restore'
-    projects: '**/*.csproj'  # Adjusted to match all .csproj files in subdirectories
+    projects: '**/*.csproj'  # Matches all .csproj files in subdirectories
 
 # Step 4: Build the Project
 - task: DotNetCoreCLI@2
   displayName: 'Build project'
   inputs:
     command: 'build'
-    projects: '**/*.csproj'  # Adjusted to match all .csproj files in subdirectories
+    projects: '**/*.csproj'  # Matches all .csproj files in subdirectories
 
 # Step 5: Pack NuGet Package
 - task: DotNetCoreCLI@2
@@ -54,12 +54,18 @@ steps:
 - script: |
     echo "Checking for NuGet package files..."
     dir $(Build.ArtifactStagingDirectory)
-  displayName: 'Debugging: Check for NuGet package files'
+  displayName: 'Debugging: Check NuGet Package Files'
 
-# Step 6: Push NuGet Package
+# Step 6: Push NuGet Package to Azure Artifacts Feed
 - task: DotNetCoreCLI@2
   displayName: 'Push NuGet package to Azure Artifacts Feed'
   inputs:
     command: 'push'
     packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
     arguments: '--source https://pkgs.dev.azure.com/dzhuga/StringExtensionLibrary/_packaging/newfeed/nuget/v3/index.json --api-key $(System.AccessToken) --skip-duplicate'
+
+# Debugging Step: Verify NuGet Configuration
+- script: |
+    echo "Checking NuGet configuration..."
+    dotnet nuget list source
+  displayName: 'Debug NuGet Configuration'
