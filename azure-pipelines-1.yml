@@ -1,4 +1,4 @@
-# ASP.NET
+# ASP.NET Pipeline
 # Build and test ASP.NET projects.
 # Add steps that publish symbols, save build artifacts, deploy, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/apps/aspnet/build-aspnet-4
@@ -23,19 +23,25 @@ steps:
     dotnet --version
   displayName: 'Verify .NET SDK Installation'
 
+# Debugging Step: List Working Directory Contents
+- script: |
+    echo "Debugging working directory..."
+    dir $(Build.SourcesDirectory)
+  displayName: 'Debug Working Directory'
+
 # Step 3: Restore Dependencies
 - task: DotNetCoreCLI@2
   displayName: 'Restore dependencies'
   inputs:
     command: 'restore'
-    projects: '/*.csproj'
+    projects: '**/*.csproj'  # Adjusted to match all .csproj files in subdirectories
 
 # Step 4: Build the Project
 - task: DotNetCoreCLI@2
   displayName: 'Build project'
   inputs:
     command: 'build'
-    projects: '/*.csproj'
+    projects: '**/*.csproj'  # Adjusted to match all .csproj files in subdirectories
 
 # Step 5: Pack NuGet Package
 - task: DotNetCoreCLI@2
