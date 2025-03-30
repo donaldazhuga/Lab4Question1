@@ -7,8 +7,9 @@ pool:
 variables:
   buildConfiguration: 'Release'
   packageVersion: '1.0.0'
-  projectName: 'StringLibrary'  # Changed to match your actual project name
-  projectFile: '**/$(projectName).csproj'
+  projectName: 'StringLibrary'
+  feedName: 'newfeed'
+  feedUrl: 'https://pkgs.dev.azure.com/dzhuga/StringExtensionLibrary/_packaging/newfeed/nuget/v3/index.json'
 
 steps:
 # Step 1: Install .NET 8 SDK
@@ -18,11 +19,19 @@ steps:
     version: '8.x'
     installationPath: 'C:\sdk'
 
-# Step 2: Debug repository structure
+# Step 2: Create nuget.config
 - powershell: |
-    Write-Host "##[section]Actual Project Files:"
-    Get-ChildItem -Path $(Build.SourcesDirectory) -Filter *.csproj -Recurse | Format-Table FullName
-  displayName: 'List All Project Files'
+    @"
+    <?xml version="1.0" encoding="utf-8"?>
+    <configuration>
+      <packageSources>
+        <clear />
+        <add key="$(feedName)" value="$(feedUrl)" />
+      </packageSources>
+    </configuration>
+    "@ | Out-File -FilePath 'nuget.config' -Encoding utf8
+    Get-Content 'nuget.config'
+  displayName: 'Create nuget.config'
 
 # Step 3: Restore packages
 - task: DotNetCoreCLI@2
@@ -30,8 +39,8 @@ steps:
   inputs:
     command: 'restore'
     projects: '**/$(projectName).csproj'
-    feedsToUse: 'select'
-    vstsFeed: 'dzhuga/StringExtensionLibrary/newfeed'
+    feedsToUse: 'config'
+    nugetConfigPath: 'nuget.config'
 
 # Step 4: Build project
 - task: DotNetCoreCLI@2
@@ -39,7 +48,7 @@ steps:
   inputs:
     command: 'build'
     projects: '**/$(projectName).csproj'
-    arguments: '--configuration $(buildConfiguration) --no-restore'
+    arguments: '--configuration $(buildConfiguration) --no-restore --verbosity detailed'
 
 # Step 5: Pack NuGet package
 - task: DotNetCoreCLI@2
@@ -52,21 +61,18 @@ steps:
     nobuild: true
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'packageVersion'
+    arguments: '--verbosity detailed'
 
-# Step 6: Verify package
-- script: |
-    echo "Generated packages:"
-    dir $(Build.ArtifactStagingDirectory)
-  displayName: 'Verify Package Creation'
-
-# Step 7: Push to Azure Artifacts
+# Step 6: Authenticate
 - task: NuGetAuthenticate@1
   displayName: 'Authenticate with Azure Artifacts'
 
+# Step 7: Push to Azure Artifacts (CORRECTED)
 - task: DotNetCoreCLI@2
   displayName: 'Push to Azure Artifacts'
   inputs:
     command: 'push'
     packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
-    nuGetFeedType: 'internal'
-    publishVstsFeed: 'dzhuga/StringExtensionLibrary/newfeed'
+    feedsToUse: 'config'
+    nugetConfigPath: 'nuget.config'
+    arguments: '--verbosity detailed'  # Correct way to set verbosity
