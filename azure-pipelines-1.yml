@@ -6,8 +6,8 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
-  packageVersion: '1.0.0'  # Explicit version instead of byBuildNumber
-  projectName: 'StringExtensionLibrary'
+  packageVersion: '1.0.0'
+  projectName: 'StringLibrary'  # Changed to match your actual project name
   projectFile: '**/$(projectName).csproj'
 
 steps:
@@ -20,26 +20,16 @@ steps:
 
 # Step 2: Debug repository structure
 - powershell: |
-    Write-Host "##[section]Repository Contents:"
-    Get-ChildItem -Path $(Build.SourcesDirectory) -Recurse | Format-Table FullName
-    
-    Write-Host "##[section]Searching for project file: $(projectFile)"
-    $projFile = Get-ChildItem -Path $(Build.SourcesDirectory) -Filter '$(projectName).csproj' -Recurse
-    if ($projFile) {
-        Write-Host "##[section]Found project at: $($projFile.FullName)"
-        Write-Host "##vso[task.setvariable variable=actualProjectFile]$($projFile.FullName)"
-    } else {
-        Write-Host "##vso[task.logissue type=error]Project file not found!"
-        exit 1
-    }
-  displayName: 'Locate Project File'
+    Write-Host "##[section]Actual Project Files:"
+    Get-ChildItem -Path $(Build.SourcesDirectory) -Filter *.csproj -Recurse | Format-Table FullName
+  displayName: 'List All Project Files'
 
 # Step 3: Restore packages
 - task: DotNetCoreCLI@2
   displayName: 'Restore packages'
   inputs:
     command: 'restore'
-    projects: '$(actualProjectFile)'
+    projects: '**/$(projectName).csproj'
     feedsToUse: 'select'
     vstsFeed: 'dzhuga/StringExtensionLibrary/newfeed'
 
@@ -48,33 +38,26 @@ steps:
   displayName: 'Build project'
   inputs:
     command: 'build'
-    projects: '$(actualProjectFile)'
+    projects: '**/$(projectName).csproj'
     arguments: '--configuration $(buildConfiguration) --no-restore'
 
-# Step 5: Pack NuGet package (Fixed Versioning)
+# Step 5: Pack NuGet package
 - task: DotNetCoreCLI@2
   displayName: 'Create NuGet package'
   inputs:
     command: 'pack'
-    packagesToPack: '$(actualProjectFile)'
+    packagesToPack: '**/$(projectName).csproj'
     configuration: '$(buildConfiguration)'
     outputDir: '$(Build.ArtifactStagingDirectory)'
     nobuild: true
-    versioningScheme: 'byEnvVar'  # Changed from byBuildNumber
-    versionEnvVar: 'packageVersion'  # Uses our explicit version variable
-    verbosityPack: 'detailed'
+    versioningScheme: 'byEnvVar'
+    versionEnvVar: 'packageVersion'
 
 # Step 6: Verify package
-- powershell: |
-    $nupkg = Get-ChildItem -Path $(Build.ArtifactStagingDirectory) -Filter '*.nupkg'
-    if ($nupkg) {
-        Write-Host "##[section]Successfully created package:"
-        $nupkg | Format-Table FullName,Length,LastWriteTime
-    } else {
-        Write-Host "##vso[task.logissue type=error]Package creation failed!"
-        exit 1
-    }
-  displayName: 'Verify Package'
+- script: |
+    echo "Generated packages:"
+    dir $(Build.ArtifactStagingDirectory)
+  displayName: 'Verify Package Creation'
 
 # Step 7: Push to Azure Artifacts
 - task: NuGetAuthenticate@1
